@@ -20,6 +20,7 @@ import torch
 import copy
 from ase import Atoms
 from ase.db import connect
+from ase.calculators.singlepoint import SinglePointCalculator
 
 import schnetpack as spk
 import schnetpack.properties as structure
@@ -57,11 +58,11 @@ class BaseAtomsData(ABC):
     """
 
     def __init__(
-        self,
-        load_properties: Optional[List[str]] = None,
-        load_structure: bool = True,
-        transforms: Optional[List[Transform]] = None,
-        subset_idx: Optional[List[int]] = None,
+            self,
+            load_properties: Optional[List[str]] = None,
+            load_structure: bool = True,
+            transforms: Optional[List[Transform]] = None,
+            subset_idx: Optional[List[int]] = None,
     ):
         """
         Args:
@@ -96,7 +97,7 @@ class BaseAtomsData(ABC):
 
     def subset(self, subset_idx: List[int]):
         assert (
-            subset_idx is not None
+                subset_idx is not None
         ), "Indices for creation of the subset need to be provided!"
         ds = copy.copy(self)
         if ds.subset_idx:
@@ -152,29 +153,29 @@ class BaseAtomsData(ABC):
 
     @abstractmethod
     def iter_properties(
-        self,
-        indices: Union[int, Iterable[int]] = None,
-        load_properties: List[str] = None,
-        load_structure: Optional[bool] = None,
+            self,
+            indices: Union[int, Iterable[int]] = None,
+            load_properties: List[str] = None,
+            load_structure: Optional[bool] = None,
     ):
         pass
 
     @staticmethod
     @abstractmethod
     def create(
-        datapath: str,
-        position_unit: str,
-        property_unit_dict: Dict[str, str],
-        atomrefs: Dict[str, List[float]],
-        **kwargs,
+            datapath: str,
+            position_unit: str,
+            property_unit_dict: Dict[str, str],
+            atomrefs: Dict[str, List[float]],
+            **kwargs,
     ) -> "BaseAtomsData":
         pass
 
     @abstractmethod
     def add_systems(
-        self,
-        property_list: List[Dict[str, Any]],
-        atoms_list: Optional[List[Atoms]] = None,
+            self,
+            property_list: List[Dict[str, Any]],
+            atoms_list: Optional[List[Atoms]] = None,
     ):
         pass
 
@@ -191,14 +192,14 @@ class ASEAtomsData(BaseAtomsData):
     """
 
     def __init__(
-        self,
-        datapath: str,
-        load_properties: Optional[List[str]] = None,
-        load_structure: bool = True,
-        transforms: Optional[List[torch.nn.Module]] = None,
-        subset_idx: Optional[List[int]] = None,
-        property_units: Optional[Dict[str, str]] = None,
-        distance_unit: Optional[str] = None,
+            self,
+            datapath: str,
+            load_properties: Optional[List[str]] = None,
+            load_structure: bool = True,
+            transforms: Optional[List[torch.nn.Module]] = None,
+            subset_idx: Optional[List[int]] = None,
+            property_units: Optional[Dict[str, str]] = None,
+            distance_unit: Optional[str] = None,
     ):
         """
         Args:
@@ -289,10 +290,10 @@ class ASEAtomsData(BaseAtomsData):
             assert max(self.subset_idx) < n_structures
 
     def iter_properties(
-        self,
-        indices: Union[int, Iterable[int]] = None,
-        load_properties: List[str] = None,
-        load_structure: Optional[bool] = None,
+            self,
+            indices: Union[int, Iterable[int]] = None,
+            load_properties: List[str] = None,
+            load_structure: Optional[bool] = None,
     ):
         """
         Return property dictionary at given indices.
@@ -334,7 +335,7 @@ class ASEAtomsData(BaseAtomsData):
                 )
 
     def _get_properties(
-        self, conn, idx: int, load_properties: List[str], load_structure: bool
+            self, conn, idx: int, load_properties: List[str], load_structure: bool
     ):
         row = conn.get(idx + 1)
 
@@ -344,7 +345,7 @@ class ASEAtomsData(BaseAtomsData):
         properties[structure.idx] = torch.tensor([idx])
         for pname in load_properties:
             properties[pname] = (
-                torch.tensor(row.data[pname].copy()) * self.conversions[pname]
+                    torch.tensor(row.data[pname].copy()) * self.conversions[pname]
             )
 
         Z = row["numbers"].copy()
@@ -353,10 +354,10 @@ class ASEAtomsData(BaseAtomsData):
         if load_structure:
             properties[structure.Z] = torch.tensor(Z, dtype=torch.long)
             properties[structure.position] = (
-                torch.tensor(row["positions"].copy()) * self.distance_conversion
+                    torch.tensor(row["positions"].copy()) * self.distance_conversion
             )
             properties[structure.cell] = (
-                torch.tensor(row["cell"][None].copy()) * self.distance_conversion
+                    torch.tensor(row["cell"][None].copy()) * self.distance_conversion
             )
             properties[structure.pbc] = torch.tensor(row["pbc"])
 
@@ -403,11 +404,11 @@ class ASEAtomsData(BaseAtomsData):
 
     @staticmethod
     def create(
-        datapath: str,
-        distance_unit: str,
-        property_unit_dict: Dict[str, str],
-        atomrefs: Optional[Dict[str, List[float]]] = None,
-        **kwargs,
+            datapath: str,
+            distance_unit: str,
+            property_unit_dict: Dict[str, str],
+            atomrefs: Optional[Dict[str, List[float]]] = None,
+            **kwargs,
     ) -> "ASEAtomsData":
         """
 
@@ -464,9 +465,11 @@ class ASEAtomsData(BaseAtomsData):
             self._add_system(conn, atoms, **properties)
 
     def add_systems(
-        self,
-        property_list: List[Dict[str, Any]],
-        atoms_list: Optional[List[Atoms]] = None,
+            self,
+            property_list: List[Dict[str, Any]],
+            atoms_list: Optional[List[Atoms]] = None,
+            load_energy_and_forces: bool = False,
+            load_stress: bool = False
     ):
         """
         Add atoms data to the dataset.
@@ -479,6 +482,8 @@ class ASEAtomsData(BaseAtomsData):
                 order as corresponding list of `atoms`.
                 Keys have to match the `available_properties` of the dataset
                 plus additional structure properties, if atoms is None.
+            load_energy_and_forces: True, if energy and forces should be loaded (Only if atoms is None).
+            load_stress: True, if stress should be loaded (Only if atoms is None).
         """
         if atoms_list is None:
             atoms_list = [None] * len(property_list)
@@ -487,15 +492,24 @@ class ASEAtomsData(BaseAtomsData):
             for at, prop in zip(atoms_list, property_list):
                 self._add_system(conn, at, **prop)
 
-    def _add_system(self, conn, atoms: Optional[Atoms] = None, **properties):
+    def _add_system(self, conn, atoms: Optional[Atoms] = None, load_energy_and_forces=False, load_stress=False,
+                    **properties):
         """Add systems to DB"""
         if atoms is None:
             try:
+                energy, forces, stress = None, None, None
                 Z = properties[structure.Z]
                 R = properties[structure.R]
                 cell = properties[structure.cell]
                 pbc = properties[structure.pbc]
+                if load_energy_and_forces:
+                    energy = properties[structure.energy]
+                    forces = properties[structure.forces]
+                if load_stress:
+                    stress = properties[structure.stress]
                 atoms = Atoms(numbers=Z, positions=R, cell=cell, pbc=pbc)
+                if energy is not None or forces is not None or stress is not None:
+                    atoms.set_calculator(SinglePointCalculator(atoms, forces=forces, stress=stress, energy=energy))
             except KeyError as e:
                 raise AtomsDataError(
                     "Property dict does not contain all necessary structure keys"
@@ -531,11 +545,11 @@ class ASEAtomsData(BaseAtomsData):
 
 
 def create_dataset(
-    datapath: str,
-    format: AtomsDataFormat,
-    distance_unit: str,
-    property_unit_dict: Dict[str, str],
-    **kwargs,
+        datapath: str,
+        format: AtomsDataFormat,
+        distance_unit: str,
+        property_unit_dict: Dict[str, str],
+        **kwargs,
 ) -> BaseAtomsData:
     """
     Create a new atoms dataset.
@@ -581,7 +595,7 @@ def load_dataset(datapath: str, format: AtomsDataFormat, **kwargs) -> BaseAtomsD
 
 
 def resolve_format(
-    datapath: str, format: Optional[AtomsDataFormat] = None
+        datapath: str, format: Optional[AtomsDataFormat] = None
 ) -> Tuple[str, AtomsDataFormat]:
     """
     Extract data format from file suffix, check for consistency with (optional) given
@@ -597,7 +611,7 @@ def resolve_format(
         if format is None:
             format = AtomsDataFormat.ASE
         assert (
-            format is AtomsDataFormat.ASE
+                format is AtomsDataFormat.ASE
         ), f"File extension {suffix} is not compatible with chosen format {format}"
     elif len(suffix) == 0 and format:
         datapath = datapath + extension_map[format]
