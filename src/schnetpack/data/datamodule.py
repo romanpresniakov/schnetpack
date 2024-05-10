@@ -409,21 +409,3 @@ class AtomsDataModule(pl.LightningDataModule):
                 pin_memory=self._pin_memory,
             )
         return self._test_dataloader
-
-    def average_number_of_neighbors(self) -> float:
-        _n_atoms = self.num_train
-        # iterate through the atoms in the dataset
-        idx_i = []
-        for batch in self.train_dataloader():
-            for atoms in batch:
-                idx_i.append(atoms.i)
-
-
-        #TODO: Retrieve idx_i from train dataset and sum over segments
-
-
-    def segment_sum(self, list, segment_ids, num_segments):
-        result = [0] * num_segments
-        for i in range(len(list)):
-            result[segment_ids[i]] += list[i]
-        return result
