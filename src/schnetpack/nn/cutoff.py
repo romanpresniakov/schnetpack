@@ -8,7 +8,15 @@ __all__ = [
     "mollifier_cutoff",
     "cosine_cutoff",
     "SwitchFunction",
+    "get_cutoff_fn",
 ]
+
+
+def get_cutoff_fn(key: str) -> type(nn.Module):
+    if key == "cosine_cutoff_fn":
+        return CosineCutoff
+    elif key == "mollifier_cutoff_fn":
+        return MollifierCutoff #TODO: Add other cutoffs specified in mlff
 
 
 def cosine_cutoff(input: torch.Tensor, cutoff: torch.Tensor):
@@ -105,7 +113,7 @@ class MollifierCutoff(nn.Module):
 
 
 def _switch_component(
-    x: torch.Tensor, ones: torch.Tensor, zeros: torch.Tensor
+        x: torch.Tensor, ones: torch.Tensor, zeros: torch.Tensor
 ) -> torch.Tensor:
     """
     Basic component of switching functions.
