@@ -1,8 +1,9 @@
-import numpy as np
 from typing import Callable
 
+import torch
 
-def safe_mask(mask, fn: Callable, operand: np.ndarray, placeholder: float = 0.) -> np.ndarray:
+
+def safe_mask(mask, fn: Callable, operand: torch.Tensor, placeholder: float = 0.) -> torch.Tensor:
     """
     Safe mask which ensures that gradients flow nicely.
 
@@ -15,11 +16,11 @@ def safe_mask(mask, fn: Callable, operand: np.ndarray, placeholder: float = 0.) 
     Returns: New array with values either being the output of fn or the placeholder value.
 
     """
-    masked = np.where(mask, operand, 0)
-    return np.where(mask, fn(masked), placeholder)
+    masked = torch.where(mask, operand, 0)
+    return torch.where(mask, fn(masked), placeholder)
 
 
-def safe_mask_special(mask_op, mask_fn, fn: Callable, operand: np.ndarray, placeholder: float = 0.) -> np.ndarray:
+def safe_mask_special(mask_op, mask_fn, fn: Callable, operand: torch.Tensor, placeholder: float = 0.) -> torch.Tensor:
     """
     Safe mask which ensures that gradients flow nicely. It is an extension of safe_mask to cases where operand and
         fn(operand) differ in their structure and default broadcasting does not yield the desired output.
@@ -33,11 +34,11 @@ def safe_mask_special(mask_op, mask_fn, fn: Callable, operand: np.ndarray, place
     Returns: New array with values either being the output of fn or the placeholder value.
 
     """
-    masked = np.where(mask_op, operand, 0)
-    return np.where(mask_fn, fn(masked), placeholder)
+    masked = torch.where(mask_op, operand, 0)
+    return torch.where(mask_fn, fn(masked), placeholder)
 
 
-def safe_scale(x: np.ndarray, scale: np.ndarray, placeholder: float = 0):
+def safe_scale(x: torch.Tensor, scale: torch.Tensor, placeholder: float = 0):
     """
     Autograd safe scaling tensor of x with scale.
 

@@ -1,18 +1,10 @@
 from math import pi
 
 import torch
-import torch.nn as nn
-
-__all__ = ["gaussian_rbf", "GaussianRBF", "GaussianRBFCentered", "BesselRBF", "get_rbf_fn"]
+__all__ = ["gaussian_rbf", "GaussianRBF", "GaussianRBFCentered", "BesselRBF"]
 
 from torch import nn as nn
 
-
-def get_rbf_fn(key: str) -> type(nn.Module):
-    if key == "rbf":
-        return GaussianRBF
-    if key == "bessel":
-        return BesselRBF #TODO: Add other rbf functions covered in mlff
 
 def gaussian_rbf(inputs: torch.Tensor, offsets: torch.Tensor, widths: torch.Tensor):
     coeff = -0.5 / torch.pow(widths, 2)
