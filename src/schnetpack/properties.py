@@ -37,6 +37,10 @@ n_atoms: Final[str] = "_n_atoms"  #: number of atoms
 offsets: Final[str] = "_offsets"  #: cell offset vectors
 offsets_lr: Final[str] = "_offsets_lr"  #: cell offset vectors for long range
 
+pair_mask: Final[str] = "_pair_mask"  #: mask for pairs
+point_mask: Final[str] = "_point_mask"  #: mask for points
+
+
 R_strained: Final[str] = (
     position + "_strained"
 )  #: atom positions with strain-dependence
