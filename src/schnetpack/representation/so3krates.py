@@ -318,7 +318,8 @@ class So3kratesLayer(nn.Module):
             idx_i: torch.Tensor, # shape: (n_pairs,) idx of centering atom i
             x: torch.Tensor,# shape: (n_atoms, F)  atomic features --> eco so aufbauen dass nonlocal features hierzu aufaddiert werden ?
             rbf: torch.Tensor, # shape: (n_pairs,K): rbf expanded distances
-            phi_r_cut: torch.Tensor) -> torch.Tensor:
+            phi_r_cut: torch.Tensor,
+            idx_m: torch.Tensor) -> torch.Tensor:
         
         # create m_tot contracted chi_ij
         self.record["chi_in"] = chi
@@ -326,11 +327,7 @@ class So3kratesLayer(nn.Module):
         m_chi_ij = wrapper_make_degree_norm(chi, idx_j, idx_i, self.degrees) # shape: (n_pairs, |l|)
         # Apply softmax to m_chi_ij for each molecule separately
         # group by idx_i (atoms in the same molecule)
-        softmaxed_d_gamma = torch.zeros_like(m_chi_ij)
-        unique_idx_i = torch.unique(idx_i)
-        for idx in unique_idx_i:
-            mask = (idx_i == idx)  #mask
-            softmaxed_d_gamma[mask] = torch.nn.functional.softmax(m_chi_ij[mask], dim=0)
+        softmaxed_d_gamma = slice_idx_i(idx_i=idx_i, idx_m=idx_m, m_chi_ij=m_chi_ij.clone())
         self.record["sphc_distances_in"] = softmaxed_d_gamma
         exp_chi_l_with_cutoff = self.sphc_expansion_fn(softmaxed_d_gamma)
         x_pre_1 = self.layer_normalization(x)
@@ -391,6 +388,32 @@ class So3kratesLayer(nn.Module):
         # return final atomic features
         return x_skip_2, chi_skip_2
         
+import torch
+
+
+def slice_idx_i(idx_i,idx_m,m_chi_ij):
+    
+# storage of torch tensor slice indices
+# start is to keep track of N-1 idx
+    start = 0
+    # get number of mols and count of atoms per mol
+    idx, counts = idx_m.unique(return_counts=True)
+    # precompute cumulative sums of atoms
+    cumulative_counts = torch.cumsum(counts, dim=0)
+    for i, n_atoms in zip(idx, cumulative_counts):
+
+        # find index only if i is not the end_token
+        if i == idx.max():
+            softmax_index = None
+        else:
+            softmax_index = torch.nonzero(idx_i == n_atoms).min().item()
+
+        # slice chi from start to softmax_index
+        m_chi_ij[start:softmax_index] = torch.nn.functional.softmax(m_chi_ij[start:softmax_index], dim=0)
+        # update start for the next iteration
+        start = softmax_index
+
+    return m_chi_ij      
 
 
 class So3krates(nn.Module):
@@ -624,7 +647,7 @@ class So3krates(nn.Module):
         # get tensors from input dictionary
         atomic_numbers = inputs[structure.Z]
         r_ij = inputs[structure.Rij]
-        idx_i,idx_j = inputs[structure.idx_i],inputs[structure.idx_j]
+        idx_i,idx_j,idx_m = inputs[structure.idx_i],inputs[structure.idx_j],inputs[structure.idx_m]
         # compute pair features
         d_ij = torch.norm(r_ij, dim=1,keepdim=True)
         f_ij = self.radial_basis(d_ij.squeeze())
@@ -644,7 +667,6 @@ class So3krates(nn.Module):
             total_charge = inputs[structure.total_charge]
             spin = inputs[structure.spin_multiplicity]
 
-            idx_m = inputs[structure.idx_m]
             num_batch = len(inputs[structure.idx])
 
             charge_embedding = self.charge_embedding(
@@ -669,7 +691,8 @@ class So3krates(nn.Module):
                 idx_i=idx_i,
                 x=x,
                 rbf=f_ij,
-                phi_r_cut=rcut_ij
+                phi_r_cut=rcut_ij,
+                idx_m=idx_m
             )
             # the atomic embeddings are overwritten instead of adding the interaction
             # to the init embeddings, this is in contrast to schnet etc.
