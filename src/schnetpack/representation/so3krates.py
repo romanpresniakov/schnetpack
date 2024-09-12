@@ -409,7 +409,7 @@ def slice_idx_i(idx_i,idx_m,m_chi_ij):
             softmax_index = torch.nonzero(idx_i == n_atoms).min().item()
 
         # slice chi from start to softmax_index
-        m_chi_ij[start:softmax_index] = torch.nn.functional.softmax(m_chi_ij[start:softmax_index], dim=0)
+        m_chi_ij[start:softmax_index] = 1 - torch.nn.functional.softmax(m_chi_ij[start:softmax_index], dim=0)
         # update start for the next iteration
         start = softmax_index
 
