@@ -105,7 +105,7 @@ class MollifierCutoff(nn.Module):
 
 
 def _switch_component(
-    x: torch.Tensor, ones: torch.Tensor, zeros: torch.Tensor
+        x: torch.Tensor, ones: torch.Tensor, zeros: torch.Tensor
 ) -> torch.Tensor:
     """
     Basic component of switching functions.
