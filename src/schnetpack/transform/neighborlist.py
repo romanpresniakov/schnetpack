@@ -1,4 +1,6 @@
 import os
+
+import ase
 import torch
 import shutil
 from ase import Atoms
@@ -31,6 +33,23 @@ class CacheException(Exception):
     pass
 
 
+class AverageNumberOfNeighbors:
+    def __init__(self, inputs: List[Dict[str, torch.Tensor]]):
+        self.inputs = inputs
+
+    def get_average(self) -> float:
+        # use count neighbors class to count neighbors for each atom
+        count_neighbors = CountNeighbors()
+        n_nbh = []
+        result = 0
+        for inputs in self.inputs:
+            n_nbh.append(count_neighbors(inputs)[properties.n_nbh])
+        for i in range(len(n_nbh)):
+            result += n_nbh[i].detach().numpy().sum()
+        result /= len(n_nbh)
+        return result
+
+
 class CachedNeighborList(Transform):
     """
     Dynamic caching of neighbor lists.
@@ -48,12 +67,12 @@ class CachedNeighborList(Transform):
     is_postprocessor: bool = False
 
     def __init__(
-        self,
-        cache_path: str,
-        neighbor_list: Transform,
-        nbh_transforms: Optional[List[torch.nn.Module]] = None,
-        keep_cache: bool = False,
-        cache_workdir: str = None,
+            self,
+            cache_path: str,
+            neighbor_list: Transform,
+            nbh_transforms: Optional[List[torch.nn.Module]] = None,
+            keep_cache: bool = False,
+            cache_workdir: str = None,
     ):
         """
         Args:
@@ -96,8 +115,8 @@ class CachedNeighborList(Transform):
             self.cache_location = cache_path
 
     def forward(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
         cache_file = os.path.join(
             self.cache_location, f"cache_{inputs[properties.idx][0]}.pt"
@@ -163,8 +182,8 @@ class NeighborListTransform(Transform):
     is_postprocessor: bool = False
 
     def __init__(
-        self,
-        cutoff: float,
+            self,
+            cutoff: float,
     ):
         """
         Args:
@@ -174,8 +193,8 @@ class NeighborListTransform(Transform):
         self._cutoff = cutoff
 
     def forward(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
         Z = inputs[properties.Z]
         R = inputs[properties.R]
@@ -189,12 +208,12 @@ class NeighborListTransform(Transform):
         return inputs
 
     def _build_neighbor_list(
-        self,
-        Z: torch.Tensor,
-        positions: torch.Tensor,
-        cell: torch.Tensor,
-        pbc: torch.Tensor,
-        cutoff: float,
+            self,
+            Z: torch.Tensor,
+            positions: torch.Tensor,
+            cell: torch.Tensor,
+            pbc: torch.Tensor,
+            cutoff: float,
     ):
         """Override with specific neighbor list implementation"""
         raise NotImplementedError
@@ -225,7 +244,7 @@ class MatScipyNeighborList(NeighborListTransform):
     """
 
     def _build_neighbor_list(
-        self, Z, positions, cell, pbc, cutoff, eps=1e-6, buffer=1.0
+            self, Z, positions, cell, pbc, cutoff, eps=1e-6, buffer=1.0
     ):
         at = Atoms(numbers=Z, positions=positions, cell=cell, pbc=pbc)
 
@@ -264,10 +283,10 @@ class SkinNeighborList(Transform):
     is_postprocessor: bool = False
 
     def __init__(
-        self,
-        neighbor_list: Transform,
-        nbh_transforms: Optional[List[torch.nn.Module]] = None,
-        cutoff_skin: float = 0.3,
+            self,
+            neighbor_list: Transform,
+            nbh_transforms: Optional[List[torch.nn.Module]] = None,
+            cutoff_skin: float = 0.3,
     ):
         """
         Args:
@@ -292,8 +311,8 @@ class SkinNeighborList(Transform):
 
     # @timeit
     def forward(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
 
         update_required, inputs = self._update(inputs)
@@ -306,8 +325,8 @@ class SkinNeighborList(Transform):
         self.previous_inputs = {}
 
     def _remove_neighbors_in_skin(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
 
         Rij = inputs[properties.Rij]
@@ -349,10 +368,10 @@ class SkinNeighborList(Transform):
             # check if structure change is sufficiently small to reuse previous neighbor
             # list
             if (
-                (previous_pbc == pbc.numpy()).any()
-                and (previous_cell == cell.numpy()).any()
-                and ((previous_positions - positions.numpy()) ** 2).sum(1).max()
-                < 0.25 * self.cutoff_skin**2
+                    (previous_pbc == pbc.numpy()).any()
+                    and (previous_cell == cell.numpy()).any()
+                    and ((previous_positions - positions.numpy()) ** 2).sum(1).max()
+                    < 0.25 * self.cutoff_skin ** 2
             ):
                 # reuse previous neighbor list
                 inputs[properties.idx_i] = previous_inputs[properties.idx_i].clone()
@@ -530,8 +549,8 @@ class FilterNeighbors(Transform):
         super().__init__()
 
     def forward(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
 
         n_neighbors = inputs[properties.idx_i].shape[0]
@@ -559,8 +578,8 @@ class CollectAtomTriples(Transform):
     is_postprocessor: bool = False
 
     def forward(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
         """
         Using the neighbors contained within the cutoff shell, generate all unique pairs
@@ -617,8 +636,22 @@ class CountNeighbors(Transform):
         self.sorted = sorted
 
     def forward(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
+    ) -> Dict[str, torch.Tensor]:
+        idx_i = inputs[properties.idx_i]
+
+        if self.sorted:
+            _, n_nbh = torch.unique_consecutive(idx_i, return_counts=True)
+        else:
+            _, n_nbh = torch.unique(idx_i, return_counts=True)
+
+        inputs[properties.n_nbh] = n_nbh
+        return inputs
+
+    def forward(
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
         idx_i = inputs[properties.idx_i]
 
@@ -649,8 +682,8 @@ class WrapPositions(Transform):
         self.eps = eps
 
     def forward(
-        self,
-        inputs: Dict[str, torch.Tensor],
+            self,
+            inputs: Dict[str, torch.Tensor],
     ) -> Dict[str, torch.Tensor]:
         R = inputs[properties.R]
         cell = inputs[properties.cell].view(3, 3)
