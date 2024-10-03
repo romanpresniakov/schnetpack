@@ -8,6 +8,8 @@ __all__ = [
     "mollifier_cutoff",
     "cosine_cutoff",
     "SwitchFunction",
+    "zero_cutoff",
+    "ZeroCutoff"
 ]
 
 
@@ -156,3 +158,75 @@ class SwitchFunction(nn.Module):
 
         f_switch = torch.where(x <= 0, ones, torch.where(x >= 1, zeros, fm / (fp + fm)))
         return f_switch
+
+
+def zero_cutoff(input: torch.Tensor):
+    """ dummy zero cutoff function for sphc in so3krates layer
+    if none is requested to ensure consistent behavior."""
+
+    # Compute values of cutoff function
+    input_cut = torch.zeros(input.shape[0], device=input.device)
+    return input_cut
+
+class ZeroCutoff(nn.Module):
+    r""" Dummy cutoff function for sphc to only return zeros.
+    if none is requested to ensure consistent behavior"""
+
+    def __init__(self):
+        """
+        Args:
+            cutoff (float, optional): cutoff radius.
+        """
+        super().__init__()
+
+    def forward(self, input: torch.Tensor):
+        return zero_cutoff(input)
+    
+
+class PolynomialCutoff(nn.Module):
+
+    def __init__(self, cutoff: float, p: int, eps: float = 1.0e-7):
+        """
+        Args:
+            cutoff: Cutoff radius.
+            p: Maximal order of the polynomial
+            eps: Offset added to distances for numerical stability.
+        """
+        super().__init__()
+        self.register_buffer("cutoff", torch.FloatTensor([cutoff]))
+        self.register_buffer("p", torch.IntTensor([p]))
+        self.register_buffer("eps", torch.FloatTensor([eps]))
+
+    def forward(self, input: torch.Tensor):
+        return polynomial_cutoff_fn(input, self.cutoff, self.p, self.eps)
+
+
+def polynomial_cutoff_fn(
+        input: torch.Tensor, cutoff: torch.Tensor, p: torch.Tensor,eps: torch.Tensor
+        ) -> torch.Tensor:
+    """
+    Polynomial cutoff function.
+   .. math::
+        \phi_{\chi_{\text{cut}}}(x) = 
+            1 - \frac{(p+1)(p+2)}{2} x^p + p(p+2) x^{p+1} - \frac{p(p+1)}{2} x^{p+2}
+
+    Args:
+        input: Distances, shape: (...)
+        cutoff: Cutoff radius
+        p: Maximal order of the polynomial
+        eps: Offset added to distances for numerical stability.
+
+    in ref paper p=6 and k=1 for cumulene
+    cutoff = k/n_atoms with k controlling the extend of cutoff
+    TODO update to work with batch of differenz sized molecules
+    Returns: Cutoff fn output with value=0 for r > r_cut, shape (...)
+
+    """
+    input_cut = (1 - (1/2) * (p+1)*(p+2) * (input/cutoff)**p
+                 + p*(p+2)*(input/cutoff)**(p+1)
+                 -(1/2)*p*(p+1)*(input/cutoff)**(p+2)
+                 )
+    
+    mask = (input + eps < cutoff).float()
+    input_cut = input_cut * mask
+    return input_cut
