@@ -196,7 +196,7 @@ def predict(config: DictConfig):
     dataset: BaseAtomsData = hydra.utils.instantiate(config.data)
     loader = AtomsLoader(dataset, batch_size=config.batch_size, num_workers=8)
 
-    model = load_model("best_model")
+    model = load_model("/mnt/d/Uni/bachelor_arbeit/cumulene/cluster/origso3/2024-09-30_xWAXhafw_4/best_model")
 
     class WrapperLM(LightningModule):
         def __init__(self, model, enable_grad=config.enable_grad):
