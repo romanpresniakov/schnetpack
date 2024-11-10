@@ -455,7 +455,7 @@ class So3krates(nn.Module):
             nuc_weight_init = torch.empty((max_z,self.n_atom_basis))
             torch.nn.init.kaiming_normal_(nuc_weight_init, a=0, mode='fan_in', nonlinearity='linear')
 
-            self.embedding = nn.Embedding(max_z, self.n_atom_basis, padding_idx=0,_weight=nuc_weight_init)
+            self.embedding = nn.Embedding(max_z, self.n_atom_basis, padding_idx=0,_weight=nuc_weight_init, _freeze=True)
 
         # initialize spin and charge embeddings
         if self.activate_charge_spin_embedding:
