@@ -404,13 +404,13 @@ class So3krates(nn.Module):
         activate_charge_spin_embedding: bool = False,
         embedding: Union[Callable, nn.Module] = None,
         degrees: Sequence[int] = [0,1,2],
-        spherical_harmonics: nn.Module = None,
-        so3krates_feature_block: nn.Module = None,
-        so3krates_geometry_block: nn.Module = None,
-        so3krates_interaction_block: nn.Module = None,
-        so3krates_residual_mlp: nn.Module = None,
-        so3krates_chi_cut_fn_dynamic: nn.Module = None,
-        so3krates_layer_normalization: nn.Module = None,
+        spherical_harmonics: List[nn.Module] = None,
+        so3krates_feature_block: List[nn.Module] = None,
+        so3krates_geometry_block: List[nn.Module] = None,
+        so3krates_interaction_block: List[nn.Module] = None,
+        so3krates_residual_mlp: List[nn.Module] = None,
+        so3krates_chi_cut_fn_dynamic: List[nn.Module] = None,
+        so3krates_layer_normalization: List[nn.Module] = None,
     ):
         """
         TODO update args
@@ -455,7 +455,7 @@ class So3krates(nn.Module):
             nuc_weight_init = torch.empty((max_z,self.n_atom_basis))
             torch.nn.init.kaiming_normal_(nuc_weight_init, a=0, mode='fan_in', nonlinearity='linear')
 
-            self.embedding = nn.Embedding(max_z, self.n_atom_basis, padding_idx=0,_weight=nuc_weight_init, _freeze=True)
+            self.embedding = nn.Embedding(max_z, self.n_atom_basis, padding_idx=0,_weight=nuc_weight_init)
 
         # initialize spin and charge embeddings
         if self.activate_charge_spin_embedding:
@@ -474,19 +474,32 @@ class So3krates(nn.Module):
         # spherical harmonics distances initial embedding
         self.spherical_harmonics = spherical_harmonics
         # initialize interaction blocks
-        self.so3krates_layer = snn.replicate_module(
-            lambda: So3kratesLayer(
+        layers = torch.nn.ModuleList()
+        for i in range(self.n_interactions):
+            so3krates_deep_layer = So3kratesLayer(
                 degrees=self.degrees,
-                feature_block=so3krates_feature_block,
-                geometry_block=so3krates_geometry_block,
-                interaction_block=so3krates_interaction_block,
-                residual_mlp=so3krates_residual_mlp,
-                chi_cut_fn_dynamic=so3krates_chi_cut_fn_dynamic,
-                layer_normalization=so3krates_layer_normalization
-            ),
-            self.n_interactions,
-            False,
-        )
+                feature_block=so3krates_feature_block[i],
+                geometry_block=so3krates_geometry_block[i],
+                interaction_block=so3krates_interaction_block[i],
+                residual_mlp=so3krates_residual_mlp[i],
+                chi_cut_fn_dynamic=so3krates_chi_cut_fn_dynamic[i],
+                layer_normalization=so3krates_layer_normalization[i]
+            )
+            layers.append(module=so3krates_deep_layer)
+        self.so3krates_layer = layers  
+        # self.so3krates_layer = snn.replicate_module(
+        #     lambda: So3kratesLayer(
+        #         degrees=self.degrees,
+        #         feature_block=so3krates_feature_block,
+        #         geometry_block=so3krates_geometry_block,
+        #         interaction_block=so3krates_interaction_block,
+        #         residual_mlp=so3krates_residual_mlp,
+        #         chi_cut_fn_dynamic=so3krates_chi_cut_fn_dynamic,
+        #         layer_normalization=so3krates_layer_normalization
+        #     ),
+        #     self.n_interactions,
+        #     False,
+        # )
         #self.reset_parameters()
 
     def helper(self,data,level,device):
