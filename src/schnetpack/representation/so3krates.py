@@ -473,10 +473,9 @@ class So3krates(nn.Module):
 
         # spherical harmonics distances initial embedding
         self.spherical_harmonics = spherical_harmonics
-        # initialize interaction blocks
-        layers = torch.nn.ModuleList()
-        for i in range(self.n_interactions):
-            so3krates_deep_layer = So3kratesLayer(
+        # initialize interaction blocks  
+        self.so3krates_layer = snn.replicate_module_deep(
+            lambda i: So3kratesLayer(
                 degrees=self.degrees,
                 feature_block=so3krates_feature_block[i],
                 geometry_block=so3krates_geometry_block[i],
@@ -484,22 +483,10 @@ class So3krates(nn.Module):
                 residual_mlp=so3krates_residual_mlp[i],
                 chi_cut_fn_dynamic=so3krates_chi_cut_fn_dynamic[i],
                 layer_normalization=so3krates_layer_normalization[i]
-            )
-            layers.append(module=so3krates_deep_layer)
-        self.so3krates_layer = layers  
-        # self.so3krates_layer = snn.replicate_module(
-        #     lambda: So3kratesLayer(
-        #         degrees=self.degrees,
-        #         feature_block=so3krates_feature_block,
-        #         geometry_block=so3krates_geometry_block,
-        #         interaction_block=so3krates_interaction_block,
-        #         residual_mlp=so3krates_residual_mlp,
-        #         chi_cut_fn_dynamic=so3krates_chi_cut_fn_dynamic,
-        #         layer_normalization=so3krates_layer_normalization
-        #     ),
-        #     self.n_interactions,
-        #     False,
-        # )
+            ),
+            self.n_interactions,
+            False,
+        )
         #self.reset_parameters()
 
     def helper(self,data,level,device):
