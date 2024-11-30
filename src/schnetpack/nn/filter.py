@@ -52,7 +52,7 @@ class RadialFilter(nn.Module):
         # filter network for the radial part
         # TODO should be adapted to work with arbitrary number of layers
         l1 = Dense(in_features=self.num_features[0],activation=activation,out_features=self.num_features[1])
-        l2 = Dense(in_features=self.num_features[1],activation=None,out_features=self.num_features[1])
+        l2 = Dense(in_features=self.num_features[1],activation=None,out_features=self.num_features[2])
 
         self.rad_filter_fn = nn.Sequential(*[l1,l2])
         #self.rad_filter_fn = nn.ModuleList([l1,l2])
@@ -94,18 +94,20 @@ class RadialSphericalFilter(nn.Module):
 
     def __init__(
             self,
-            num_features: Sequence[int],
+            num_rad_features: Sequence[int],
+            num_sph_features: Sequence[int],
             degrees: Sequence[int],
             activation: Callable = F.silu,
             debug_tag: str = None):
         
         super().__init__()
         self.register_buffer("degrees", torch.LongTensor(degrees))
-        self.num_features =  list(num_features)
+        self.num_rad_features =  list(num_rad_features)
         # filter network for the radial part
-        self.rad_filter_fn = RadialFilter(self.num_features,activation)
+        self.rad_filter_fn = RadialFilter(self.num_rad_features,activation)
         # filter network for the spherical coordinates
-        self.sph_filter_fn = SphericalFilter(self.degrees,num_features,activation)
+        self.num_sph_features = num_sph_features
+        self.sph_filter_fn = SphericalFilter(self.degrees,num_sph_features,activation)
         
     
     def forward(self,rbf:torch.Tensor,d_gamma:torch.Tensor) -> torch.Tensor:
