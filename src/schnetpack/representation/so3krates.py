@@ -412,7 +412,7 @@ class So3krates(nn.Module):
         activate_charge_spin_embedding: bool = False,
         embedding: Union[Callable, nn.Module] = None,
         degrees: Sequence[int] = [0,1,2],
-        spherical_harmonics: List[nn.Module] = None,
+        spherical_harmonics: nn.Module = None,
         so3krates_feature_block: List[nn.Module] = None,
         so3krates_geometry_block: List[nn.Module] = None,
         so3krates_interaction_block: List[nn.Module] = None,
