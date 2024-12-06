@@ -1,6 +1,6 @@
 import torch
 
-__all__ = ["ReduceLROnPlateau"]
+__all__ = ["ReduceLROnPlateau, RealExponentialLR"]
 
 
 class ReduceLROnPlateau(torch.optim.lr_scheduler.ReduceLROnPlateau):
