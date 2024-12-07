@@ -3,7 +3,7 @@ from typing import Callable, Optional, Tuple, Sequence
 import torch
 from torch import nn as nn
 
-__all__ = ["replicate_module", "derivative_from_atomic", "derivative_from_molecular"]
+__all__ = ["replicate_module", "derivative_from_atomic", "derivative_from_molecular", "replicate_module_deep"]
 
 from torch.autograd import grad
 
@@ -15,6 +15,15 @@ def replicate_module(
         module_list = nn.ModuleList([module_factory()] * n)
     else:
         module_list = nn.ModuleList([module_factory() for i in range(n)])
+    return module_list
+
+def replicate_module_deep(
+    module_factory: Callable[[], nn.Module], n: int, share_params: bool
+):
+    if share_params:
+        module_list = nn.ModuleList([module_factory(0)] * n)
+    else:
+        module_list = nn.ModuleList([module_factory(i) for i in range(n)])
     return module_list
 
 

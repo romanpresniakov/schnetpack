@@ -209,7 +209,7 @@ class ASENeighborList(NeighborListTransform):
     Calculate neighbor list using ASE.
     """
 
-    def _build_neighbor_list(self, Z, positions, cell, pbc, cutoff):
+    def _build_neighbor_list(self, Z, positions, cell, pbc, cutoff, spec):
         at = Atoms(numbers=Z, positions=positions, cell=cell, pbc=pbc)
 
         idx_i, idx_j, S = ase_neighbor_list("ijS", at, cutoff, self_interaction=False)
