@@ -1,7 +1,7 @@
 defaults:
   - _self_
   - optimizer: adam
-  - scheduler: reduce_on_plateau
+  - scheduler: exp_lr
 
 _target_: schnetpack.AtomisticTask
 outputs: ???

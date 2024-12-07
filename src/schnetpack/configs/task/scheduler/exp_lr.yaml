@@ -1,0 +1,8 @@
+# @package task
+
+scheduler_cls: schnetpack.train.RealExponentialLR
+scheduler_monitor: val_loss
+scheduler_args:
+  decay_rate: 0.5
+  transition_begin: 0
+  transition_steps: 1000 
