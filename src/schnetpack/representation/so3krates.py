@@ -332,19 +332,16 @@ class So3kratesLayer(nn.Module):
         self.record["chi_in"] = chi
         self.record["features_in"] = x
         m_chi_ij = wrapper_make_degree_norm(chi, idx_j, idx_i, self.degrees) # shape: (n_pairs, |l|)
-        # Apply softmax to m_chi_ij for each molecule separately
-        # group by idx_i (atoms in the same molecule)
-        softmaxed_d_gamma = slice_idx_i(idx_i=idx_i, idx_m=idx_m, m_chi_ij=m_chi_ij.clone())
+        softmaxed_d_gamma = slice_idx_i(idx_i=idx_i, idx_m=idx_m, m_chi_ij=m_chi_ij)
         self.record["sphc_distances_in"] = softmaxed_d_gamma
-        exp_chi_l_with_cutoff = self.sphc_expansion_fn(softmaxed_d_gamma)
+        m_chi_ij_exp = self.sphc_expansion_fn(softmaxed_d_gamma)
         x_pre_1 = self.layer_normalization(x)
-        # calculate phi_chi_cut
-        phi_chi_cut = self.chi_cut_fn_dynamic(m_chi_ij)#[:,None] # TODO make sure that shape is consistent (npairs,1)
+        phi_chi_cut = self.chi_cut_fn_dynamic(m_chi_ij_exp)#[:,None] # TODO make sure that shape is consistent (npairs,1)
 
         # calculate local features
         x_local = self.feature_block(
                             rbf = rbf,
-                            d_gamma = exp_chi_l_with_cutoff,
+                            d_gamma = m_chi_ij_exp,
                             x = x_pre_1,
                             idx_i = idx_i,
                             idx_j = idx_j,
@@ -356,11 +353,11 @@ class So3kratesLayer(nn.Module):
                             sph_ij = sph_ij,
                             x = x_pre_1,
                             rbf = rbf,
-                            d_gamma = exp_chi_l_with_cutoff,
+                            d_gamma = m_chi_ij_exp,
                             phi_r_cut = phi_r_cut,
                             phi_chi_cut = phi_chi_cut,
                             idx_i = idx_i,
-                            idx_j = idx_j,)
+                            idx_j = idx_j)
 
         # add local and sphc features, and first skip connection
         # different from original implementation, here it is assumed that nonlocal features
@@ -390,24 +387,21 @@ class So3kratesLayer(nn.Module):
         # track chi results for later analysis
         self.record["chi_out"] = chi_skip_2
         self.record["features_out"] = x_skip_2
-        self.record["sphc_distances_out"] = exp_chi_l_with_cutoff
+        self.record["sphc_distances_out"] = m_chi_ij_exp
 
         # return final atomic features
         return x_skip_2, chi_skip_2
         
 
 
-def slice_idx_i(idx_i,idx_m,m_chi_ij):
-    
-# storage of torch tensor slice indices
-# start is to keep track of N-1 idx
+def slice_idx_i(idx_i, idx_m, m_chi_ij):
+    result = torch.zeros_like(m_chi_ij)
     start = 0
     # get number of mols and count of atoms per mol
     idx, counts = idx_m.unique(return_counts=True)
     # precompute cumulative sums of atoms
     cumulative_counts = torch.cumsum(counts, dim=0)
     for i, n_atoms in zip(idx, cumulative_counts):
-
         # find index only if i is not the end_token
         if i == idx.max():
             softmax_index = None
@@ -415,11 +409,11 @@ def slice_idx_i(idx_i,idx_m,m_chi_ij):
             softmax_index = torch.nonzero(idx_i == n_atoms).min().item()
 
         # slice chi from start to softmax_index
-        m_chi_ij[start:softmax_index] = 1 - torch.nn.functional.softmax(m_chi_ij[start:softmax_index], dim=0)
+        result[start:softmax_index] = 1 - torch.nn.functional.softmax(m_chi_ij[start:softmax_index], dim=0)
         # update start for the next iteration
         start = softmax_index
 
-    return m_chi_ij      
+    return result      
 
 
 class So3krates(nn.Module):
@@ -453,6 +447,7 @@ class So3krates(nn.Module):
         so3krates_residual_mlp: List[nn.Module] = None,
         so3krates_chi_cut_fn_dynamic: List[nn.Module] = None,
         so3krates_layer_normalization: List[nn.Module] = None,
+        sphc_expansion_fn: List[nn.Module] = None
     ):
         """
         TODO update args
@@ -523,7 +518,8 @@ class So3krates(nn.Module):
                 interaction_block=so3krates_interaction_block[i],
                 residual_mlp=so3krates_residual_mlp[i],
                 chi_cut_fn_dynamic=so3krates_chi_cut_fn_dynamic[i],
-                layer_normalization=so3krates_layer_normalization[i]
+                layer_normalization=so3krates_layer_normalization[i],
+                sphc_expansion_fn=sphc_expansion_fn[i]
             ),
             self.n_interactions,
             False,
