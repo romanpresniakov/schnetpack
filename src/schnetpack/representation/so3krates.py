@@ -331,10 +331,10 @@ class So3kratesLayer(nn.Module):
         # create m_tot contracted chi_ij
         self.record["chi_in"] = chi
         self.record["features_in"] = x
-        m_chi_ij = wrapper_make_degree_norm(chi, idx_j, idx_i, self.degrees) # shape: (n_pairs, |l|)
-        softmaxed_d_gamma = slice_idx_i(idx_i=idx_i, idx_m=idx_m, m_chi_ij=m_chi_ij)
-        self.record["sphc_distances_in"] = softmaxed_d_gamma
-        m_chi_ij_exp = self.sphc_expansion_fn(softmaxed_d_gamma)
+        #m_chi_ij = wrapper_make_degree_norm(chi, idx_j, idx_i, self.degrees) # shape: (n_pairs, |l|)
+        #softmaxed_d_gamma = slice_idx_i(idx_i=idx_i, idx_m=idx_m, m_chi_ij=m_chi_ij)
+    #self.record["sphc_distances_in"] = softmaxed_d_gamma
+        m_chi_ij_exp = self.sphc_expansion_fn(m_chi_ij)
         x_pre_1 = self.layer_normalization(x)
         phi_chi_cut = self.chi_cut_fn_dynamic(m_chi_ij_exp)#[:,None] # TODO make sure that shape is consistent (npairs,1)
 
