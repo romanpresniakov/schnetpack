@@ -25,8 +25,9 @@ class SphcBasisExpansion(nn.Module):
         for col_idx in range(inputs.shape[1]):
             # get the corresponding column of chi
             chi_l = inputs[:, col_idx]
-            exp_chi_l = self.sphc_basis_expansion_fn(chi_l) # expand degreewise
-            exp_chi_l = torch.where(m_cut_ij != 0, exp_chi_l * m_cut_ij, 0) # shape: (n_pairs,n_rbfs)
+            m_cut_l = m_cut_ij[:, col_idx].unsqueeze(1)
+            exp_chi_l = self.sphc_basis_expansion_fn(chi_l) # (n, #rbfs) 
+            exp_chi_l = torch.where(m_cut_l != 0, exp_chi_l * m_cut_l, 0) # shape: (n_pairs,n_rbfs)
             reduced_chi_l = self.reduce_fn(exp_chi_l)
             output[:, col_idx] = reduced_chi_l.squeeze()
         return output
