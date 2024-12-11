@@ -154,7 +154,7 @@ def train(config: DictConfig):
             if "_target_" in lg_conf:
                 log.info(f"Instantiating logger <{lg_conf._target_}>")
                 l = hydra.utils.instantiate(lg_conf)
-
+                l.config = OmegaConf.to_container(config, resolve=True) 
                 logger.append(l)
 
     # Init Lightning trainer
@@ -167,8 +167,12 @@ def train(config: DictConfig):
         _convert_="partial",
     )
 
+
     log.info("Logging hyperparameters.")
-    log_hyperparameters(config=config, model=task, trainer=trainer)
+    sorted_dict = dict(sorted(OmegaConf.to_container(config, resolve=True).items()))
+    # Convert back to OmegaConf
+
+    log_hyperparameters(config=sorted_dict, model=task, trainer=trainer)
 
     # Train the model
     log.info("Starting training.")
@@ -196,7 +200,7 @@ def predict(config: DictConfig):
     dataset: BaseAtomsData = hydra.utils.instantiate(config.data)
     loader = AtomsLoader(dataset, batch_size=config.batch_size, num_workers=8)
 
-    model = load_model("best_model")
+    model = load_model("/mnt/d/Uni/bachelor_arbeit/cumulene/cluster/run1/2024-09-15_xWAXhafw_3/best_model")
 
     class WrapperLM(LightningModule):
         def __init__(self, model, enable_grad=config.enable_grad):

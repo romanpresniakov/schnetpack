@@ -40,7 +40,7 @@ class NeighborListMD:
         self._collate = collate_fn
 
         # Build neighbor list transform
-        self.transform = [base_nbl(self.cutoff_full)]
+        self.transform = [base_nbl(self.cutoff_full, spec='D')]
 
         if self.requires_triples:
             self.transform.append(CollectAtomTriples())

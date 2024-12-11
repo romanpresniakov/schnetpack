@@ -13,3 +13,7 @@ from schnetpack.nn.scatter import *
 from schnetpack.nn.radial import *
 from schnetpack.nn.utils import *
 from schnetpack.nn.embedding import *
+from schnetpack.nn.expansion import *
+from schnetpack.nn.attention import *
+from schnetpack.nn.filter import *
+from schnetpack.nn.clebsch_gordon import *

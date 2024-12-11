@@ -1,6 +1,6 @@
 import torch
 
-__all__ = ["ReduceLROnPlateau"]
+__all__ = ["ReduceLROnPlateau", "RealExponentialLR"]
 
 
 class ReduceLROnPlateau(torch.optim.lr_scheduler.ReduceLROnPlateau):
@@ -82,3 +82,10 @@ class ReduceLROnPlateau(torch.optim.lr_scheduler.ReduceLROnPlateau):
                 + (1.0 - self.smoothing_factor) * current
             )
         super().step(current, epoch)
+        
+
+class RealExponentialLR(torch.optim.lr_scheduler.LambdaLR):
+    
+    def __init__(self, optimizer, decay_rate, transition_begin, transition_steps):
+        lambda1 = lambda epoch: decay_rate ** ((epoch - transition_begin) / transition_steps)
+        super().__init__(optimizer=optimizer, lr_lambda=lambda1)
